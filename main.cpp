@@ -12,6 +12,12 @@ using namespace DirectX;
 #pragma comment(lib,"d3d12.lib")
 #pragma comment(lib,"dxgi.lib")
 
+#define DIRECTINPUT_VERSION    0x0800
+#include <dinput.h>
+
+#pragma comment(lib,"dinput8.lib")
+#pragma comment(lib,"dxguid.lib")
+
 //ウィンドウプロシージャ
 LRESULT WindowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 	//メッセージに応じてゲーム固有の処理を行う
@@ -222,6 +228,27 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	result = device->CreateFence(fenceVal, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
 
+	//DirectInputの初期化
+	IDirectInput8* directInput = nullptr;
+	result = DirectInput8Create(
+		w.hInstance, DIRECTINPUT_VERSION, IID_IDirectInput8,
+		(void**)&directInput, nullptr);
+	assert(SUCCEEDED(result));
+
+	//キーボードデバイスの生成
+	IDirectInputDevice8* keyboard = nullptr;
+	result = directInput->CreateDevice(GUID_SysKeyboard, &keyboard, NULL);
+	assert(SUCCEEDED(result));
+
+	//入力データ形式のセット
+	result = keyboard->SetDataFormat(&c_dfDIKeyboard); //標準形式
+	assert(SUCCEEDED(result));
+
+	//排他制御レベルのセット
+	result = keyboard->SetCooperativeLevel(
+		hwnd, DISCL_FOREGROUND | DISCL_NONEXCLUSIVE | DISCL_NOWINKEY);
+	assert(SUCCEEDED(result));
+
 	//DirectX初期化処理　ここまで
 
 	//描画初期化処理
@@ -424,6 +451,23 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 
 		//DirectX毎フレーム処理　ここから
+
+		//キーボード情報の取得開始
+		keyboard->Acquire();
+
+		//全キーの入力状態を取得する
+		BYTE key[256] = {};
+		keyboard->GetDeviceState(sizeof(key), key);
+
+		//数字の0キーが押されていたら(使い方サンプル)
+		if (key[DIK_0]) {
+			OutputDebugStringA("Hit 0\n"); //出力ウィンドウに「Hit 0」と表示
+		}
+
+		//画面クリアカラーを変更する
+		if (key[DIK_SPACE]) {//スペースキーが押されていたら
+			//画面クリアカラーの数値を書き換える
+		}
 
 		//バックバッファの番号を取得
 		UINT bbIndex = swapChain->GetCurrentBackBufferIndex();
