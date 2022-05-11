@@ -252,9 +252,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//DirectX初期化処理　ここまで
 
 	//描画初期化処理
-
 	//頂点データ
-	XMFLOAT3 vertices[] = {
+
+	//下の三角形
+	XMFLOAT3 verticesUnder[] = {
 
 		{-0.5f,-0.5f,0.0f},//左下
 		{-0.5f,+0.5f,0.0f},//左上
@@ -262,12 +263,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	};
 
+	//上の三角形
+	XMFLOAT3 verticesUpper[] = {
+
+		{+0.5f,+0.5f,0.0f},//左下
+		{-0.5f,+0.5f,0.0f},//左上
+		{-0.5f,+0.5f,0.0f},//右下
+
+	};
+
 	//頂点データ全体のサイズ = 頂点データ一つ分のサイズ * 頂点データの要素数
-	UINT sizeVB = static_cast<UINT>(sizeof(XMFLOAT3) * _countof(vertices));
+	UINT sizeVB = static_cast<UINT>(sizeof(XMFLOAT3) * _countof(verticesUnder));
+	/*UINT sizeVB = static_cast<UINT>(sizeof(XMFLOAT3) * _countof(verticesUpper));*/
 
 	//頂点バッファの設定
 	D3D12_HEAP_PROPERTIES heapProp{};		//ヒープ設定
 	heapProp.Type = D3D12_HEAP_TYPE_UPLOAD; //GPUへの転送用
+
+	//定数バッファ用構造体
 
 	//リソース設定
 	D3D12_RESOURCE_DESC resDesc{};
@@ -292,13 +305,18 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(result));
 
 	//GPU上のバッファに対応した仮想メモリ(メインメモリ)を取得
-	XMFLOAT3* vertMap = nullptr;
-	result = vertBuff->Map(0, nullptr, (void**) & vertMap);
+	XMFLOAT3* vertMapUnder = nullptr;
+	result = vertBuff->Map(0, nullptr, (void**) & vertMapUnder);
+	XMFLOAT3* vertMapUpper = nullptr;
+	result = vertBuff->Map(0, nullptr, (void**)&vertMapUpper);
 	assert(SUCCEEDED(result));
 
 	//全頂点に対して
-	for (int i = 0; i < _countof(vertices); i++) {
-		vertMap[i] = vertices[i];	//座標をコピー
+	for (int i = 0; i < _countof(verticesUnder); i++) {//下の三角形
+		vertMapUnder[i] = verticesUnder[i];	//座標をコピー
+	}
+	for (int i = 0; i < _countof(verticesUpper); i++) {//上の三角形
+		vertMapUpper[i] = verticesUpper[i];	//座標をコピー
 	}
 
 	//繋がりを解除
@@ -435,7 +453,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	result = device->CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(&pipelineState));
 	assert(SUCCEEDED(result));
 
-
+	//変数宣言
+	//フラグ
+	int changeFlag = 0;
 
 	//ゲームループ
 	while (true) {
@@ -467,6 +487,16 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		//画面クリアカラーを変更する
 		if (key[DIK_SPACE]) {//スペースキーが押されていたら
 			//画面クリアカラーの数値を書き換える
+		}
+
+		//キーボードの1キーを押すたびにフラグが切り替わる
+		if (key[DIK_1] == 1) {
+			if (changeFlag < 2) {
+				changeFlag++;
+			}
+			else {
+				changeFlag = 0;
+			}
 		}
 
 		//バックバッファの番号を取得
@@ -551,7 +581,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			//ビューポートを設定
 			commandList->RSSetViewports(1, &viewports[i]);
 			//描画
-			commandList->DrawInstanced(_countof(vertices), 1, 0, 0);//全ての頂点を使って描画
+			if (changeFlag == 0) {
+				commandList->DrawInstanced(_countof(verticesUnder), 1, 0, 0);//全ての頂点を使って描画
+			}
+			else {
+				commandList->DrawInstanced(_countof(verticesUnder), 1, 0, 0);//全ての頂点を使って描画
+				commandList->DrawInstanced(_countof(verticesUpper), 1, 0, 0);//全ての頂点を使って描画
+			}
 		}
 
 		//4.描画コマンド　ここまで
