@@ -325,13 +325,13 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	result = constBuffMaterial->Map(0, nullptr, (void**)&constMapMaterial);//マッピング
 	assert(SUCCEEDED(result));
 
-	//値を書き込むと自動的に転送される
-	constMapMaterial->color = XMFLOAT4(1, 0, 0, 0.5f); //RGBAで半透明の赤
+	////値を書き込むと自動的に転送される
+	//constMapMaterial->color = XMFLOAT4(1, 0, 0, 0.5f); //RGBAで半透明の赤
 
 
 	//GPU上のバッファに対応した仮想メモリ(メインメモリ)を取得
 	XMFLOAT3* vertMap = nullptr;
-	result = vertBuff->Map(0, nullptr, (void**) & vertMap);
+	result = vertBuff->Map(0, nullptr, (void**)&vertMap);
 	assert(SUCCEEDED(result));
 
 	//全頂点に対して
@@ -487,11 +487,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	// パイプラインにルートシグネチャをセット
 	pipelineDesc.pRootSignature = rootSignature;
 	//パイプランステートの生成
-	ID3D12PipelineState * pipelineState = nullptr;
+	ID3D12PipelineState* pipelineState = nullptr;
 	result = device->CreateGraphicsPipelineState(&pipelineDesc, IID_PPV_ARGS(&pipelineState));
 	assert(SUCCEEDED(result));
 
-
+	//変数
+	float addColor = 0.0f;
 
 	//ゲームループ
 	while (true) {
@@ -583,6 +584,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		// 描画コマンド
 		commandList->DrawInstanced(_countof(vertices), 1, 0, 0);//全ての頂点を使って描画
+
+		//値を書き込むと自動的に転送される
+		if (addColor < 1) {
+			addColor += 0.005f;
+		}
+		constMapMaterial->color = XMFLOAT4(0.5f, addColor, addColor, 0.5f); //RGBAで半透明の赤
 
 		//4.描画コマンド　ここまで
 
