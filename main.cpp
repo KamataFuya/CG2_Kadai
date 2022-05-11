@@ -254,12 +254,21 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//描画初期化処理
 
 	//頂点データ
-	XMFLOAT3 vertices[] = {
+	//XMFLOAT3 vertices[] = {
 
+	//	{-0.5f,-0.5f,0.0f},//左下
+	//	{-0.5f,+0.5f,0.0f},//左上
+	//	{+0.5f,-0.5f,0.0f},//右下
+
+	//};
+	XMFLOAT3 vertices[] =
+	{
 		{-0.5f,-0.5f,0.0f},//左下
 		{-0.5f,+0.5f,0.0f},//左上
 		{+0.5f,-0.5f,0.0f},//右下
-
+		{+0.5f,-0.5f,0.0f},//右下
+		{-0.5f,+0.5f,0.0f},//左上
+		{+0.5f,+0.5f,0.0f},//右上
 	};
 
 	//頂点データ全体のサイズ = 頂点データ一つ分のサイズ * 頂点データの要素数
@@ -325,8 +334,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	result = constBuffMaterial->Map(0, nullptr, (void**)&constMapMaterial);//マッピング
 	assert(SUCCEEDED(result));
 
-	////値を書き込むと自動的に転送される
-	//constMapMaterial->color = XMFLOAT4(1, 0, 0, 0.5f); //RGBAで半透明の赤
+	//値を書き込むと自動的に転送される
+	constMapMaterial->color = XMFLOAT4(1, 0, 0, 0.5f); //RGBAで半透明の赤
 
 
 	//GPU上のバッファに対応した仮想メモリ(メインメモリ)を取得
@@ -574,7 +583,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		commandList->SetGraphicsRootSignature(rootSignature);
 
 		// プリミティブ形状の設定コマンド
-		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 三角形リスト
+		/*commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);*/ // 三角形リスト
+		/*commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);*/ //点のリスト
+		/*commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);*/ //線のリスト
+		/*commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);*/ //線のストリップ
+		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); //三角形のストリップ
 
 		// 頂点バッファビューの設定コマンド
 		commandList->IASetVertexBuffers(0, 1, &vbView);
@@ -584,12 +597,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 		// 描画コマンド
 		commandList->DrawInstanced(_countof(vertices), 1, 0, 0);//全ての頂点を使って描画
-
-		//値を書き込むと自動的に転送される
-		if (addColor < 1) {
-			addColor += 0.005f;
-		}
-		constMapMaterial->color = XMFLOAT4(0.5f, addColor, addColor, 0.5f); //RGBAで半透明の赤
 
 		//4.描画コマンド　ここまで
 
