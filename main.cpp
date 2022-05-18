@@ -261,14 +261,30 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//	{+0.5f,-0.5f,0.0f},//右下
 
 	//};
+	
+	//XMFLOAT3 vertices[] =
+	//{
+	//	{-0.5f,-0.5f,0.0f},//左下
+	//	{-0.5f,+0.5f,0.0f},//左上
+	//	{+0.5f,-0.5f,0.0f},//右下
+	//	{+0.5f,-0.5f,0.0f},//右下
+	//	{-0.5f,+0.5f,0.0f},//左上
+	//	{+0.5f,+0.5f,0.0f},//右上
+	//};
+
 	XMFLOAT3 vertices[] =
 	{
-		{-0.5f,-0.5f,0.0f},//左下
-		{-0.5f,+0.5f,0.0f},//左上
-		{+0.5f,-0.5f,0.0f},//右下
-		{+0.5f,-0.5f,0.0f},//右下
-		{-0.5f,+0.5f,0.0f},//左上
-		{+0.5f,+0.5f,0.0f},//右上
+		{-0.5f,-0.5f,0.0f},//左下 インデックスθの頂点
+		{-0.5f,+0.5f,0.0f},//左上 インデックス1の頂点
+		{+0.5f,-0.5f,0.0f},//右下 インデックス2の頂点
+		{+0.5f,+0.5f,0.0f},//右上 インデックス3の頂点
+	};
+
+	//インデックスデータ
+	uint16_t indices[] =
+	{
+		0,1,2, //三角形1つ目
+		1,2,3, //三角形2つ目
 	};
 
 	//頂点データ全体のサイズ = 頂点データ一つ分のサイズ * 頂点データの要素数
@@ -299,6 +315,39 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		IID_PPV_ARGS(&vertBuff)
 	);
 	assert(SUCCEEDED(result));
+
+	//インデックスデータ全体のサイズ
+	UINT sizeIB = static_cast<UINT>(sizeof(uint16_t) * _countof(indices));
+
+	//リソース設定
+	resDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+	resDesc.Width = sizeIB;
+	resDesc.Height = 1;
+	resDesc.DepthOrArraySize = 1;
+	resDesc.MipLevels = 1;
+	resDesc.SampleDesc.Count = 1;
+	resDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+
+	//インデックスバッファの生成
+	ID3D12Resource* indexBuff = nullptr;
+	result = device->CreateCommittedResource(
+		&heapProp,
+		D3D12_HEAP_FLAG_NONE,
+		&resDesc,
+		D3D12_RESOURCE_STATE_GENERIC_READ,
+		nullptr,
+		IID_PPV_ARGS(&indexBuff));
+
+	//インデックスバッファのマッピング
+	uint16_t* indexMap = nullptr;
+	result = indexBuff->Map(0, nullptr, (void**)&indexMap);
+	//全インデックスに対して
+	for (int i = 0; i < _countof(indices); i++)
+	{
+		indexMap[i] = indices[i];
+	}
+	//マッピング解除
+	indexBuff->Unmap(0, nullptr);
 
 	//定数バッファ用構造体
 	struct ConstBufferDataMaterial {
@@ -359,6 +408,12 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vbView.SizeInBytes = sizeVB;
 	//頂点1つ分のデータサイズ
 	vbView.StrideInBytes = sizeof(XMFLOAT3);
+
+	//インデックスバッファビューの生成
+	D3D12_INDEX_BUFFER_VIEW ibView{};
+	ibView.BufferLocation = indexBuff->GetGPUVirtualAddress();
+	ibView.Format = DXGI_FORMAT_R16_UINT;
+	ibView.SizeInBytes = sizeIB;
 
 	ID3DBlob* vsBlob = nullptr;	  //頂点シェーダオブジェクト
 	ID3DBlob* psBlob = nullptr;	  //ピクセルシェーダオブジェクト
@@ -583,20 +638,24 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		commandList->SetGraphicsRootSignature(rootSignature);
 
 		// プリミティブ形状の設定コマンド
-		/*commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);*/ // 三角形リスト
+		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST); // 三角形リスト
 		/*commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_POINTLIST);*/ //点のリスト
 		/*commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);*/ //線のリスト
 		/*commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINESTRIP);*/ //線のストリップ
-		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); //三角形のストリップ
+		//commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP); //三角形のストリップ
 
 		// 頂点バッファビューの設定コマンド
 		commandList->IASetVertexBuffers(0, 1, &vbView);
+
+		//インデックスバッファビューの設定コマンド
+		commandList->IASetIndexBuffer(&ibView);
 
 		//定数バッファビュー(CBV)の設定コマンド
 		commandList->SetGraphicsRootConstantBufferView(0, constBuffMaterial->GetGPUVirtualAddress());
 
 		// 描画コマンド
-		commandList->DrawInstanced(_countof(vertices), 1, 0, 0);//全ての頂点を使って描画
+		/*commandList->DrawInstanced(_countof(vertices), 1, 0, 0);*///全ての頂点を使って描画
+		commandList->DrawIndexedInstanced(_countof(indices), 1, 0, 0, 0);
 
 		//4.描画コマンド　ここまで
 
