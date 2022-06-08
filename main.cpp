@@ -297,10 +297,10 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//頂点データ
 	Vertex vertices[] = {
-		{{-50.0f,-50.0f,50.0f},{0.0f,1.0f}},
-		{{-50.0f,50.0f,50.0f},{0.0f,0.0f}},
-		{{50.0f,-50.0f,50.0f},{1.0f,1.0f}},
-		{{50.0f,50.0f,50.0f},{1.0f,0.0f}},
+		{{-50.0f,-50.0f,0.0f},{0.0f,1.0f}},
+		{{-50.0f,50.0f,0.0f},{0.0f,0.0f}},
+		{{50.0f,-50.0f,0.0f},{1.0f,1.0f}},
+		{{50.0f,50.0f,0.0f},{1.0f,0.0f}},
 	};
 
 	//インデックスデータ
@@ -461,9 +461,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		);
 
 	//05_03でここでビュー変換行列(透視投影)を計算
+	XMMATRIX matView;
+	XMFLOAT3 eye(0, 0, -100); //視点座標
+	XMFLOAT3 target(0, 0, 0); //注視点座標
+	XMFLOAT3 up(0, 1, 0); //上方向ベクトル
+	matView = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
 
 	//定数バッファに転送
-	constMapTransform->mat = matProjection;
+	constMapTransform->mat = matView * matProjection;
 
 	//定数バッファのマッピング
 	ConstBufferDataMaterial* constMapMaterial = nullptr;
@@ -777,6 +782,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	//変数
 	float addColor = 0.0f;
+	float angle = 0.0f;//カメラの回転角
 
 	//ゲームループ
 	while (true) {
@@ -830,6 +836,22 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		FLOAT clearColor[] = { 0.1f,0.25f,0.5f,0.0f }; //青っぽい色
 		/*FLOAT clearColor[] = { 0,0,1.0f,0 };*/
 		commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
+		//ターゲットの周りを回るカメラ
+		if (key[DIK_D] || key[DIK_A])
+		{
+			if (key[DIK_D]) { angle += XMConvertToRadians(1.0f); }
+			else if (key[DIK_A]) { angle -= XMConvertToRadians(1.0f); }
+
+			//angleラジアンだけY軸周りに回転。半径は-100
+			eye.x = -100 * sinf(angle);
+			eye.z = -100 * cosf(angle);
+
+			//ビュー変換行列を作りなおす
+			matView = XMMatrixLookAtLH(XMLoadFloat3(&eye), XMLoadFloat3(&target), XMLoadFloat3(&up));
+		}
+		//定数バッファにデータ転送
+		constMapTransform->mat = matView * matProjection;
 
 		//4.描画コマンド　ここから
 
